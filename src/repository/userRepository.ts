@@ -1,3 +1,4 @@
+import { Brackets } from "typeorm";
 import { AppDataSource } from "../configuration/database"
 import { OrderItem } from "../entity/OrderItem";
 import { Orders } from "../entity/Orders";
@@ -95,18 +96,35 @@ export const getUserOrders = async (email : string) => {
 export const getOrderItemsGreaterThanAvgPriceRepo = async () => {
     try{
         const orderItemRepo = AppDataSource.getRepository(OrderItem);
+
         const result = await orderItemRepo
             .createQueryBuilder("orderItem")
-            .where((qb) => {
-                const averagePrice = qb
-                    .subQuery()
-                    .select("AVG(orderItem.orderPrice)")
-                    .from(OrderItem, "orderItem")
-                    .getQuery();
-                    
+            .where(new Brackets(qb => {
+                const averagePrice = qb.andWhere(() => {
+                                        const averagePrice = AppDataSource.getRepository(OrderItem).createQueryBuilder("orderItem")
+                                            .subQuery()
+                                            .select("AVG(orderItem.orderPrice)")
+                                            .from(OrderItem, "orderItem")
+                                            .getQuery();
+                                            
+                                            return "orderItem.orderPrice > " + averagePrice;
+                                    })
                     return "orderItem.orderPrice > " + averagePrice;
-            })
+            }))
             .getMany();
+
+        // const result = await orderItemRepo
+        //     .createQueryBuilder("orderItem")
+        //     .where((qb) => {
+        //         const averagePrice = qb
+        //             .subQuery()
+        //             .select("AVG(orderItem.orderPrice)")
+        //             .from(OrderItem, "orderItem")
+        //             .getQuery();
+                    
+        //             return "orderItem.orderPrice > " + averagePrice;
+        //     })
+        //     .getMany();
         
         return result;
     }
